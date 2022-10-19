@@ -1,0 +1,201 @@
+import heapq
+# we need
+# 1) HashMap
+def construct_dict(str):
+    d = dict()
+    for i in range(len(str)):
+        d[str[i]] = d.get(str[i], 0) + 1
+
+    return d
+# 2) MinHeap
+def construct_min_heap(d):
+    heap = []
+    
+    for key in d.keys():
+        heap.append([d[key], key])
+        
+    heapq.heapify(heap)
+    return heap
+
+def remove2_elements_heap_invariant(heap):
+    val1 = heapq.heappop(heap)
+    val2 = heapq.heappop(heap)
+    
+    return val1, val2
+# 3) Tree
+class TreeNode:
+    def __init__(self, val, freq):
+        self.val = val
+        self.freq = freq
+        self.address = -1
+        self.left = None
+        self.right = None
+        
+class Tree:
+    def __init__(self):
+        self.head = []
+    
+        
+    def address_val(self, data):
+        return self._helper_address_val(self.head[-1], data)
+    
+    
+    def insert(self, data1, data2):
+        """
+        treeNodeR has lesser value, as
+        compared to treeNodeL
+        returns the middle node after addition
+        """
+        if len(self.head) == 0:
+            # This means we do not have any head
+            # so let us initialise it first
+            return self._insert_initialise(data1, data2)
+        else:
+            # We have head saved, i.e., we need to expand
+            # the tree, rather than to initialise it
+            if data1[0] == data1[1] and data2[0] != data2[1]:
+                return self._helper_insert_expand_1_in_head(self.head, data1, data2)
+            elif data1[0] != data1[1] and data2[0] == data2[1]:
+                return self._helper_insert_expand_1_in_head(self.head, data2, data1)
+            else:
+                return self._helper_insert_both_in_head(self.head, data1, data2)
+            
+    
+    def traverse(self):
+        self._helper_traverse(self.head[-1])
+        
+    #################################
+    ######## HELPER FUNCTIONS #######
+    #################################
+        
+    def _helper_address_val(self, head, data):
+        if head.val == data:
+            s = str(head.address)
+            
+        stringL = self._helper_address_val(head.left, data)
+        stringR = self._helper_address_val(head.right, data)
+        
+        if stringL != None:
+            return stringL + str(head.address)
+        else:
+            return stringR + str(head.address)
+        
+        
+    def _helper_traverse(self, head):
+        if head == None:
+            return
+        
+        self._helper_traverse(head.left)
+        print("Current Node has val as", str(head.val) + " and freq as", head.freq, "address is", head.address)
+        self._helper_traverse(head.right)
+        
+        return
+    
+    
+    def _insert_initialise(self, notInHead1, notInHead2):
+        if notInHead1[0] > notInHead2[0]:
+            treeNodeR = TreeNode(notInHead2[1], notInHead2[0])
+            treeNodeL = TreeNode(notInHead1[1], notInHead1[0])
+        else:
+            treeNodeL = TreeNode(notInHead2[1], notInHead2[0])
+            treeNodeR = TreeNode(notInHead1[1], notInHead1[0])
+            
+        treeNodeL.address, treeNodeR.address = 0, 1
+        treeNodeM = TreeNode(treeNodeL.freq+treeNodeR.freq, treeNodeL.freq+treeNodeR.freq)
+        self.head.append(treeNodeM)
+        treeNodeM.left, treeNodeM.right = treeNodeL, treeNodeR
+        
+        return [self.head[-1].freq, self.head[-1].val]
+    
+    
+    def _helper_insert_both_in_head(self, head, inHead1, inHead2):
+        if inHead1[0] < inHead2[0]:
+            treeNodeR, indexCR = None, -1
+            for treeNode in self.head:
+                indexCR += 1
+                if treeNode.val == inHead1[1]:
+                    treeNodeR = self.head.pop(indexCR)
+                    break
+            
+            treeNodeL, indexCL = None, -1
+            for treeNode in self.head:
+                indexCL += 1
+                if treeNode.val == inHead2[1]:
+                    treeNodeL = self.head.pop(indexCL)
+                    break
+            
+            treeNodeL.address, treeNodeR.address = 0, 1
+            treeNodeM = TreeNode(treeNodeR.freq+treeNodeL.freq, treeNodeR.freq+treeNodeL.freq)
+            treeNodeM.left, treeNodeM.right = treeNodeL, treeNodeR
+            self.head.append(treeNodeM)
+        else:
+            treeNodeR, indexCR = None, -1
+            for treeNode in self.head:
+                indexCR += 1
+                if treeNode.val == inHead2[1]:
+                    treeNodeR = self.head.pop(indexCR)
+                    break
+            
+            treeNodeL, indexCL = None, -1
+            for treeNode in self.head:
+                indexCL += 1
+                if treeNode.val == inHead1[1]:
+                    treeNodeL = self.head.pop(indexCL)
+                    break
+                    
+            treeNodeL.address, treeNodeR.address = 0, 1
+            treeNodeM = TreeNode(treeNodeR.freq+treeNodeL.freq, treeNodeR.freq+treeNodeL.freq)
+            treeNodeM.left, treeNodeM.right = treeNodeL, treeNodeR
+            self.head.append(treeNodeM)
+            
+        return self.head[-1].freq, self.head[-1].freq
+    
+    
+    def _helper_insert_expand_1_in_head(self, head, inHead, notInHead):
+        # First we check, which val lies in self.head
+        # Only if one data is in self.head
+        if inHead[0] < notInHead[0]:  
+            treeNodeR, indexC = None, -1
+            #print("InHead is", inHead, " self.head is", self.head[0].freq)
+            for treeNode in self.head:
+                indexC += 1
+                if treeNode.val == inHead[1]:
+                    treeNodeR = treeNode
+                    break
+                    
+            treeNodeL = TreeNode(notInHead[1], notInHead[0])
+            treeNodeL.address, treeNodeR.address = 0, 1
+            treeNodeM = TreeNode(treeNodeL.freq+treeNodeR.freq, treeNodeL.freq+treeNodeR.freq)
+            treeNodeM.left, treeNodeM.right = treeNodeL, treeNodeR
+            self.head[indexC] = treeNodeM
+        else:
+            treeNodeL, indexC = None, -1
+            #print("InHead is", inHead[0], " self.head is", self.head[0].freq)
+            for treeNode in self.head:
+                indexC += 1
+                if treeNode.freq == inHead[0]:
+                    treeNodeL = treeNode
+                    break
+                    
+            treeNodeR = TreeNode(notInHead[1], notInHead[0])
+            treeNodeL.address, treeNodeR.address = 0, 1
+            treeNodeM = TreeNode(treeNodeL.freq+treeNodeR.freq, treeNodeL.freq+treeNodeR.freq)
+            treeNodeM.left, treeNodeM.right = treeNodeL, treeNodeR
+            self.head[indexC] = treeNodeM
+        
+        return [self.head[indexC].freq, self.head[indexC].freq]
+    
+
+def huffman_coding(str):
+    d = construct_dict(str)
+    min_heap = construct_min_heap(d)
+    tree = Tree()
+    #print(min_heap)
+    
+    while len(min_heap) > 1: 
+        minVal1, minVal2 = remove2_elements_heap_invariant(min_heap)
+        topVal = tree.insert(minVal1, minVal2)
+        heapq.heappush(min_heap, topVal)
+        
+    #print(min_heap)
+    tree.traverse()

@@ -1,0 +1,230 @@
+import heapq
+import os
+
+class TreeNode:
+    def __init__(self, data, freq):
+        self.data = data
+        self.freq = freq
+        self.left = None
+        self.right = None
+        
+    def __lt__(self, other):
+        return self.freq < other.freq
+    
+    def __eq__(self, other):
+        return self.freq == other.freq
+    
+    def __gt__(self, other):
+        return self.freq > other.freq
+        
+class HuffmanCoding:
+    def __init__(self, path):
+        self.path = path
+        self._code_of_element = dict()
+        self._code_reverse_of_ele = dict()
+    
+    def compress(self):
+        file_name, file_extension = os.path.splitext(self.path)
+        output_path = file_name + ".bin"
+        
+        with open(self.path, 'r+') as file, open(output_path, 'wb') as output:
+            text = file.read()
+            text = text.rstrip()
+            
+            # To make a frequency dictionary
+            freq_dict = self._create_frequency_dictionary(text)
+
+            # To make a list of Nodes of the tree
+            tree_nodes_list = self._tree_nodes_list(freq_dict)
+
+            # To make a heap out of that freq dict
+            min_heap = self._create_min_heap(tree_nodes_list)
+
+            # To make a binary tree out of that heap
+            binary_tree_head = self._create_binary_tree(min_heap)
+
+            # To use address from that binary tree
+            # to get a unique digit for each element
+            self._get_address_to_each_node(binary_tree_head, "")
+
+            # To encode the string, using unique digits
+            encoded_text = self._create_encoded_string(text)
+
+            # To padd the string, because if the string is 
+            # not in the multiple of 8, for filling each bits
+            padded_encoded_text = self._create_padded_encoded_text(encoded_text)
+
+            # convert each byte to an integer
+            bytes_list = self._create_bytes_list(padded_encoded_text)
+            final_bytes = bytes(bytes_list)
+            output.write(final_bytes)
+            
+        return output_path
+    
+    def decompress(self, input_path):
+        file_name, file_extension = os.path.splitext(self.path)
+        output_path = file_name + "_decompressed" + ".txt"
+        
+        with open(input_path, "rb") as file, open(output_path, "w") as output:
+            bit_string = ""
+            byte = file.read(1)
+            while byte:
+                byte = ord(byte)
+                bits = bin(byte)[2:].rjust(8, "0")
+                bit_string += bits
+                byte = file.read(1)
+                
+            actual_text = self._remove_padding(bit_string)
+            final_text_file = self._convert_to_original(actual_text)
+            output.write(final_text_file)
+            
+        return output_path
+        
+    #######################################
+    ########## PRIVATE FUNCTIONS ##########
+    #######################################
+    
+    def _create_frequency_dictionary(self, text):
+        """
+        text: a string with all the data to covert to a dict
+        Work Done: using a dictionary (HashMap) it creates a data: frequency
+        corresponding value
+        Returns: a dictionary with data and frequency in the text
+        """
+        d = dict()
+        for data in text:
+            d[data] = d.get(data, 0) + 1
+            
+        return d
+    
+    def _tree_nodes_list(self, freq_dict):
+        """
+        freq_dict: a dictionary (HashMap) with data and their
+        respective frequencies
+        Work Done: create a list which includes the frequency and
+        the data of each element
+        Returns: a list with all the nodes of the tree
+        """
+        l = list()
+        for key in freq_dict.keys():
+            l.append(TreeNode(key, freq_dict[key]))
+            
+        return l
+        
+    def _create_min_heap(self, tree_nodes_list):
+        """
+        tree_nodes_list: a list of elementary tree nodes
+        Work Done: using heapq, creates a heap of tree nodes
+        Returns: a minimum heap of the same
+        """
+        heapq.heapify(tree_nodes_list)
+        
+        return tree_nodes_list
+    
+    def _create_binary_tree(self, min_heap):
+        """
+        min_heap: a list of min_heap of tree nodes
+        Work Done: creates a binary tree
+        Returns: the head of the binary tree, after creating
+        the binary tree
+        """
+        while len(min_heap) > 1:
+            first_min_Node = heapq.heappop(min_heap)
+            second_min_Node = heapq.heappop(min_heap)
+            top_element = TreeNode(None, first_min_Node.freq + second_min_Node.freq)
+            top_element.left = first_min_Node
+            top_element.right = second_min_Node
+            heapq.heappush(min_heap, top_element)
+            
+        return min_heap[0]
+    
+    def _get_address_to_each_node(self, head, address):
+        """
+        head: the head (root) of the binary tree
+        address: current address of the node
+        Word Done: adds the address of each element, i.e,
+        what path it takes to reach that element
+        It is unique for each element
+        Returns: None
+        """
+        # if no head is provided
+        if head is None:
+            return 
+        # Base Case, we reach a leaf Node
+        if head.data != None:
+            self._code_of_element[head.data] = address
+            self._code_reverse_of_ele[address] = head.data
+            
+        self._get_address_to_each_node(head.left, address + "0")
+        self._get_address_to_each_node(head.right, address + "1")
+        
+    def _create_encoded_string(self, text):
+        """
+        text: text data to encode
+        Work Done: Refers to unique digits in 
+        self._code_of_element and encode the text data
+        Returns: encoded text data
+        """
+        encoded_text = ""
+        for data in text:
+            encoded_text += self._code_of_element[data]
+            
+        return encoded_text
+    
+    def _create_padded_encoded_text(self, encoded_text):
+        """
+        encoded_text: the encoded text to padd
+        Work Done: the encoded text generated till now, may not
+        have neccessary digit to fill 8 bytes, if that is
+        the case we want to add zeroes to it
+        Returns: encoded text after padding
+        """
+        padded_num = 8 - (len(encoded_text)%8)
+        encoded_text += "0"*padded_num
+        padded_info = "{0:08b}".format(padded_num)
+        encoded_text = padded_info + encoded_text
+        
+        return encoded_text
+    
+    def _create_bytes_list(self, encoded_text):
+        """
+        encoded_text: a string file
+        Work Done: converts each 8 bits to a byte so as
+        to save memory
+        Returns: a list of coded values
+        """
+        list_data = []
+        for i in range(0, len(encoded_text), 8):
+            byte = encoded_text[i:i+8]
+            list_data.append(int(byte, 2))
+            
+        return list_data
+    
+    def _remove_padding(self, bit_string):
+        """
+        bit_string: string of bits which need to be decompressed
+        Work Done: removes padding ele and last extra padding
+        Returns: actual string without padding and its element
+        """
+        padded_info = bit_string[:8]
+        extra_padding = int(padded_info, 2)
+        
+        text_after_padding_removed = bit_string[8:-1*extra_padding]
+        return text_after_padding_removed
+    
+    def _convert_to_original(self, actual_text):
+        """
+        actual_text: a string text 
+        Work Done: to convert it back to its respective ele
+        Returns: original document
+        """
+        original_document = ""
+        address = ""
+        
+        for i in range(len(actual_text)):
+            address += actual_text[i]
+            if address in self._code_reverse_of_ele.keys():
+                original_document += self._code_reverse_of_ele[address]
+                address = ""
+                
+        return original_document
